@@ -32,9 +32,12 @@ python test.py
 End-to-end inference:
 
 ```bash
+# IMPORTANT: run these commands from the gpu/ directory
+# e.g. /path/to/BitNet/gpu
+
 # Download and convert the BitNet-b1.58-2B model
 mkdir checkpoints
-huggingface-cli download microsoft/bitnet-b1.58-2B-4T-bf16 --local-dir ./checkpoints/bitnet-b1.58-2B-4T-bf16
+hf download microsoft/bitnet-b1.58-2B-4T-bf16 --local-dir ./checkpoints/bitnet-b1.58-2B-4T-bf16
 python ./convert_safetensors.py --safetensors_file ./checkpoints/bitnet-b1.58-2B-4T-bf16/model.safetensors --output checkpoints/model_state.pt --model_name 2B
 python ./convert_checkpoint.py --input ./checkpoints/model_state.pt
 rm ./checkpoints/model_state.pt
@@ -42,6 +45,74 @@ rm ./checkpoints/model_state.pt
 # Inference
 python3 ./generate.py ./checkpoints/ --interactive --chat_format
 ```
+
+If you previously ran `hf download` from `gpu/bitnet_kernels`, your model may be at `./bitnet_kernels/checkpoints/...`.
+In that case, run:
+
+```bash
+mv bitnet_kernels/checkpoints/ ./
+python ./convert_safetensors.py --safetensors_file ./checkpoints/bitnet-b1.58-2B-4T-bf16/model.safetensors --output checkpoints/model_state.pt --model_name 2B
+python ./convert_checkpoint.py --input ./checkpoints/model_state.pt
+rm ./checkpoints/model_state.pt
+```
+
+
+## Troubleshooting (Linux / Ubuntu)
+
+### `nvcc: command not found`
+
+If CUDA is installed but `nvcc` is not on your `PATH`, set CUDA env vars before building:
+
+```bash
+export CUDA_HOME=/usr/local/cuda-12.9
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
+```
+
+Then build from [bitnet_kernels](bitnet_kernels):
+
+```bash
+cd bitnet_kernels
+bash compile.sh
+```
+
+### Ubuntu 25.10 / GCC 15 host compiler issue
+
+On newer Ubuntu versions, system `g++` may be 15.x, while CUDA 12.9 typically supports GCC <= 14.
+
+If you see an error similar to:
+
+```text
+unsupported GNU version! gcc versions later than 14 are not supported
+```
+
+Install `g++-14` and rebuild:
+
+```bash
+sudo apt install g++-14
+cd bitnet_kernels
+bash compile.sh
+```
+
+The script [bitnet_kernels/compile.sh](bitnet_kernels/compile.sh) now:
+
+- auto-detects `nvcc` and CUDA locations,
+- prefers CUDA 12.9 by default,
+- checks host compiler compatibility,
+- prints actionable guidance when GCC is too new.
+
+If you see errors like:
+
+```text
+bits/mathcalls.h(...): error: exception specification is incompatible with that of previous function "cospi" / "sinpi" / "rsqrt"
+```
+
+this is a known CUDA + newer glibc header interaction. The updated script already applies compatibility feature-macro flags for this case.
+
+Optional overrides:
+
+- `BITNET_CUDA_HOME=/path/to/cuda bash compile.sh` to force a CUDA version.
+- `BITNET_ALLOW_UNSUPPORTED_COMPILER=1 bash compile.sh` to try unsupported compiler mode (at your own risk).
 
 ## Optimizations
 
