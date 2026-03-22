@@ -192,6 +192,10 @@ size_t quantize_i2_s(const float * src, void * dst, int64_t nrow, int64_t n_per_
 
     // 32B for alignment
     return nrow * row_size / 4 + 32;
+#else
+    // Fallback for unsupported architectures
+    (void)src; (void)dst; (void)nrow; (void)n_per_row; (void)quant_weights;
+    return 0;
 #endif
 }
 
@@ -808,7 +812,7 @@ void ggml_vec_dot_i2_i8_s_Nx1(int n, float * s, size_t bs, const void * vx, size
             accu[iy] = _mm256_setzero_si256();
         }
 
-        int8_t * y_col = y + col * by;
+        const int8_t * y_col = y + col * by;
         
         for (int i = 0; i < group32_num; i++) {
             const uint8_t *px = x + i * 1024;

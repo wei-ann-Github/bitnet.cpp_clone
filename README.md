@@ -193,11 +193,20 @@ pip install -r requirements.txt
 ```
 3. Build the project
 ```bash
-# Manually download the model and run with local path
-huggingface-cli download microsoft/BitNet-b1.58-2B-4T-gguf --local-dir models/BitNet-b1.58-2B-4T
+# Option A: manually download a GGUF model and set up build/runtime
+hf download microsoft/BitNet-b1.58-2B-4T-gguf --local-dir models/BitNet-b1.58-2B-4T
 python setup_env.py -md models/BitNet-b1.58-2B-4T -q i2_s
 
+# Option B: let setup_env download/convert a supported HF model
+# python setup_env.py -hr microsoft/BitNet-b1.58-2B-4T -q i2_s
 ```
+
+`setup_env.py` now performs these compatibility checks automatically:
+- Initializes submodules (`git submodule update --init --recursive`)
+- Ensures `3rdparty/llama.cpp` includes BitNet GGML types (`GGML_TYPE_I2_S`, `GGML_TYPE_TL1`, `GGML_TYPE_TL2`)
+- Builds examples so `build/bin/llama-cli` is always produced
+- Verifies required binaries (`llama-cli`, `llama-quantize`) before continuing
+
 <pre>
 usage: setup_env.py [-h] [--hf-repo {1bitLLM/bitnet_b1_58-large,1bitLLM/bitnet_b1_58-3B,HF1BitLLM/Llama3-8B-1.58-100B-tokens,tiiuae/Falcon3-1B-Instruct-1.58bit,tiiuae/Falcon3-3B-Instruct-1.58bit,tiiuae/Falcon3-7B-Instruct-1.58bit,tiiuae/Falcon3-10B-Instruct-1.58bit}] [--model-dir MODEL_DIR] [--log-dir LOG_DIR] [--quant-type {i2_s,tl1}] [--quant-embd]
                     [--use-pretuned]
@@ -298,7 +307,7 @@ python utils/e2e_benchmark.py -m models/dummy-bitnet-125m.tl1.gguf -p 512 -n 128
 
 ```sh
 # Prepare the .safetensors model file
-huggingface-cli download microsoft/bitnet-b1.58-2B-4T-bf16 --local-dir ./models/bitnet-b1.58-2B-4T-bf16
+hf download microsoft/bitnet-b1.58-2B-4T-bf16 --local-dir ./models/bitnet-b1.58-2B-4T-bf16
 
 # Convert to gguf model
 python ./utils/convert-helper-bitnet.py ./models/bitnet-b1.58-2B-4T-bf16
